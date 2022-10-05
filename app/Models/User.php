@@ -59,7 +59,7 @@ class User extends Authenticatable
         'profile_photo_url',
     ];
 
-    public function companies ()
+    public function companies()
     {
         return $this->belongsToMany(Company::class);
     }
