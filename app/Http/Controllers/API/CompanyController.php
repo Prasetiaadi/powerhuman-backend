@@ -19,21 +19,24 @@ class CompanyController extends Controller
         $id = $request->input('id');
         $name = $request->input('name');
         $limit = $request->input('limit', 10);
-    // get single data
-        if ($id) {
-            $company = Company::whereHas('users', function ($query) {
-            $query->where('user_id', Auth::id());
-            })->with(['users'])->find($id);
 
-            if ($company) {
-                return ResponseFormatter::success($company, 'company found');
-            }
-            return ResponseFormatter::error('Company not found', 404);
-        }
-    // Get multiple data
-        $companies = Company::with(['users'])->whereHas('users', function ($query) {
+        $companyQuery = Company::with(['users'])->whereHas('users', function ($query) {
             $query->where('user_id', Auth::id());
         });
+
+        // Get single data
+        if ($id) {
+            $company = $companyQuery->find($id);
+
+            if ($company) {
+                return ResponseFormatter::success($company, 'Company found');
+            }
+
+            return ResponseFormatter::error('Company not found', 404);
+        }
+
+        // Get multiple data
+        $companies = $companyQuery;
 
         if ($name) {
             $companies->where('name', 'like', '%' . $name . '%');
@@ -41,31 +44,36 @@ class CompanyController extends Controller
 
         return ResponseFormatter::success(
             $companies->paginate($limit),
-            'companies found'
+            'Companies found'
         );
     }
 
     public function create(CreateCompanyRequest $request)
     {
         try {
+            // Upload logo
             if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('public/logos');
-        }
-        $company = Company::create([
-            'name' => $request->name,
-            'logo' => $path,
-        ]);
+                $path = $request->file('logo')->store('public/logos');
+            }
 
-        if (!$company) {
-            throw new Exception('Company not created');
-        }
+            // Create company
+            $company = Company::create([
+                'name' => $request->name,
+                'logo' => $path
+            ]);
 
-        $user = User::find(Auth::id());
-        $user->companies()->attach($company->id);
+            if (!$company) {
+                throw new Exception('Company not created');
+            }
 
-        $company->load('users');
+            // Attach company to user
+            $user = User::find(Auth::id());
+            $user->companies()->attach($company->id);
 
-        return ResponseFormatter::success($company, 'Company created');
+            // Load users at company
+            $company->load('users');
+
+            return ResponseFormatter::success($company, 'Company created');
         } catch (Exception $e) {
             return ResponseFormatter::error($e->getMessage(), 500);
         }
@@ -73,13 +81,14 @@ class CompanyController extends Controller
 
     public function update(UpdateCompanyRequest $request, $id)
     {
+
         try {
             // Get company
             $company = Company::find($id);
 
-            // Check if company exist
+            // Check if company exists
             if (!$company) {
-                throw new Exception("Company not found");
+                throw new Exception('Company not found');
             }
 
             // Upload logo
@@ -87,13 +96,13 @@ class CompanyController extends Controller
                 $path = $request->file('logo')->store('public/logos');
             }
 
-            // Upload company
+            // Update company
             $company->update([
-                'name'=>$request->name,
-                'logo'=>$path
+                'name' => $request->name,
+                'logo' => isset($path) ? $path : $company->logo,
             ]);
 
-            return ResponseFormatter::success($company, 'Company update');
+            return ResponseFormatter::success($company, 'Company updated');
         } catch (Exception $e) {
             return ResponseFormatter::error($e->getMessage(), 500);
         }

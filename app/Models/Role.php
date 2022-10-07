@@ -26,13 +26,13 @@ class Role extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function responsibility()
+    public function responsibilities()
     {
         return $this->hasMany(Responsibility::class);
     }
 
     public function employees()
     {
-        return $this->hasMany(Employee::class); 
+        return $this->hasMany(Employee::class);
     }
 }
